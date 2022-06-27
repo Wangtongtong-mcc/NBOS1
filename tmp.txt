@@ -1,0 +1,235 @@
+global general_handler_ec0
+global general_handler_ec1
+global general_handler_ec2
+global general_handler_ec3
+global general_handler_ec4
+global general_handler_ec5
+global general_handler_ec6
+global general_handler_ec7
+global general_handler_ec8
+global general_handler_ec9
+global general_handler_ec10
+global general_handler_ec11
+global general_handler_ec12
+global general_handler_ec13
+global general_handler_ec14
+global general_handler_ec15
+global general_handler_ec16
+global general_handler_ec17
+global general_handler_ec18
+global general_handler_ec19
+global general_handler_ec20
+global general_handler_ec21
+global general_handler_ec22
+global general_handler_ec23
+global general_handler_ec24
+global general_handler_ec25
+global general_handler_ec26
+global general_handler_ec27
+global general_handler_ec28
+global general_handler_ec29
+global general_handler_ec30
+global general_handler_ec31
+
+general_handler_ec0:
+; 保存环境
+push ds
+
+general_handler_ec1:
+; 保存环境
+push ds
+
+general_handler_ec2:
+; 保存环境
+push ds
+
+general_handler_ec3:
+; 保存环境
+push ds
+
+general_handler_ec4:
+; 保存环境
+push ds
+
+general_handler_ec5:
+; 保存环境
+push ds
+
+general_handler_ec6:
+; 保存环境
+push ds
+
+general_handler_ec7:
+; 保存环境
+push ds
+
+general_handler_ec8:
+; 保存环境
+push ds
+
+general_handler_ec9:
+; 保存环境
+push ds
+
+general_handler_ec10:
+; 保存环境
+push ds
+
+general_handler_ec11:
+; 保存环境
+push ds
+
+general_handler_ec12:
+; 保存环境
+push ds
+
+general_handler_ec13:
+; 保存环境
+push ds
+
+general_handler_ec14:
+; 保存环境
+push ds
+
+general_handler_ec15:
+; 保存环境
+push ds
+
+general_handler_ec16:
+; 保存环境
+push ds
+
+general_handler_ec17:
+; 保存环境
+push ds
+
+general_handler_ec18:
+; 保存环境
+push ds
+
+general_handler_ec19:
+; 保存环境
+push ds
+
+general_handler_ec20:
+; 保存环境
+push ds
+
+general_handler_ec21:
+; 保存环境
+push ds
+
+general_handler_ec22:
+; 保存环境
+push ds
+
+general_handler_ec23:
+; 保存环境
+push ds
+
+general_handler_ec24:
+; 保存环境
+push ds
+
+general_handler_ec25:
+; 保存环境
+push ds
+
+general_handler_ec26:
+; 保存环境
+push ds
+
+general_handler_ec27:
+; 保存环境
+push ds
+
+general_handler_ec28:
+; 保存环境
+push ds
+
+general_handler_ec29:
+; 保存环境
+push ds
+
+general_handler_ec30:
+; 保存环境
+push ds
+
+general_handler_ec31:
+; 保存环境
+push ds
+
+
+
+
+
+
+
+void general_handler_ec0(void);
+void general_handler_ec1(void);
+void general_handler_ec2(void);
+void general_handler_ec3(void);
+void general_handler_ec4(void);
+void general_handler_ec5(void);
+void general_handler_ec6(void);
+void general_handler_ec7(void);
+void general_handler_ec8(void);
+void general_handler_ec9(void);
+void general_handler_ec10(void);
+void general_handler_ec11(void);
+void general_handler_ec12(void);
+void general_handler_ec13(void);
+void general_handler_ec14(void);
+void general_handler_ec15(void);
+void general_handler_ec16(void);
+void general_handler_ec17(void);
+void general_handler_ec18(void);
+void general_handler_ec19(void);
+void general_handler_ec20(void);
+void general_handler_ec21(void);
+void general_handler_ec22(void);
+void general_handler_ec23(void);
+void general_handler_ec24(void);
+void general_handler_ec25(void);
+void general_handler_ec26(void);
+void general_handler_ec27(void);
+void general_handler_ec28(void);
+void general_handler_ec29(void);
+void general_handler_ec30(void);
+void general_handler_ec31(void);
+
+
+
+
+idt[0] = make_idt_desc(general_handler_ec0, INTERRUPT_GATE_ATTRIBUTE);
+//	idt[1] = make_idt_desc(general_handler_ec1, INTERRUPT_GATE_ATTRIBUTE);
+//	idt[2] = make_idt_desc(general_handler_ec2, INTERRUPT_GATE_ATTRIBUTE);
+//	idt[3] = make_idt_desc(general_handler_ec3, INTERRUPT_GATE_ATTRIBUTE);
+//	idt[4] = make_idt_desc(general_handler_ec4, INTERRUPT_GATE_ATTRIBUTE);
+//	idt[5] = make_idt_desc(general_handler_ec5, INTERRUPT_GATE_ATTRIBUTE);
+//	idt[6] = make_idt_desc(general_handler_ec6, INTERRUPT_GATE_ATTRIBUTE);
+//	idt[7] = make_idt_desc(general_handler_ec7, INTERRUPT_GATE_ATTRIBUTE);
+//	idt[8] = make_idt_desc(general_handler_ec8, INTERRUPT_GATE_ATTRIBUTE);
+//	idt[9] = make_idt_desc(general_handler_ec9, INTERRUPT_GATE_ATTRIBUTE);
+//	idt[10] = make_idt_desc(general_handler_ec10, INTERRUPT_GATE_ATTRIBUTE);
+//	idt[11] = make_idt_desc(general_handler_ec11, INTERRUPT_GATE_ATTRIBUTE);
+//	idt[12] = make_idt_desc(general_handler_ec12, INTERRUPT_GATE_ATTRIBUTE);
+//	idt[13] = make_idt_desc(general_handler_ec13, INTERRUPT_GATE_ATTRIBUTE);
+//	idt[14] = make_idt_desc(general_handler_ec14, INTERRUPT_GATE_ATTRIBUTE);
+//	idt[15] = make_idt_desc(general_handler_ec15, INTERRUPT_GATE_ATTRIBUTE);
+//	idt[16] = make_idt_desc(general_handler_ec16, INTERRUPT_GATE_ATTRIBUTE);
+//	idt[17] = make_idt_desc(general_handler_ec17, INTERRUPT_GATE_ATTRIBUTE);
+//	idt[18] = make_idt_desc(general_handler_ec18, INTERRUPT_GATE_ATTRIBUTE);
+//	idt[19] = make_idt_desc(general_handler_ec19, INTERRUPT_GATE_ATTRIBUTE);
+//	idt[20] = make_idt_desc(general_handler_ec20, INTERRUPT_GATE_ATTRIBUTE);
+//	idt[21] = make_idt_desc(general_handler_ec21, INTERRUPT_GATE_ATTRIBUTE);
+//	idt[22] = make_idt_desc(general_handler_ec22, INTERRUPT_GATE_ATTRIBUTE);
+//	idt[23] = make_idt_desc(general_handler_ec23, INTERRUPT_GATE_ATTRIBUTE);
+//	idt[24] = make_idt_desc(general_handler_ec24, INTERRUPT_GATE_ATTRIBUTE);
+//	idt[25] = make_idt_desc(general_handler_ec25, INTERRUPT_GATE_ATTRIBUTE);
+//	idt[26] = make_idt_desc(general_handler_ec26, INTERRUPT_GATE_ATTRIBUTE);
+//	idt[27] = make_idt_desc(general_handler_ec27, INTERRUPT_GATE_ATTRIBUTE);
+//	idt[28] = make_idt_desc(general_handler_ec28, INTERRUPT_GATE_ATTRIBUTE);
+//	idt[29] = make_idt_desc(general_handler_ec29, INTERRUPT_GATE_ATTRIBUTE);
+//	idt[30] = make_idt_desc(general_handler_ec30, INTERRUPT_GATE_ATTRIBUTE);
+//	idt[31] = make_idt_desc(general_handler_ec31, INTERRUPT_GATE_ATTRIBUTE);
