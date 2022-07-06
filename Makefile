@@ -1,4 +1,4 @@
-CC = i686-elf-gcc -m32 -c -g -I.
+CC = i686-elf-gcc -m32 -c -g -I. -nostdinc
 #AS = ~/software/nasm/bin/nasm -g
 AS=nasm -g
 #LD = ld -m elf_i386
@@ -39,7 +39,7 @@ LINKOBJS = \
 
 TARGET_DIR = ./target
 
-all : $(TARGET_DIR)/bootsect.bin $(TARGET_DIR)/loader.bin $(TARGET_DIR)/kernel.bin $(TARGET_DIR)/shell.bin
+all : $(TARGET_DIR)/bootsect.bin $(TARGET_DIR)/loader.bin $(TARGET_DIR)/kernel.bin $(TARGET_DIR)/shell.bin $(TARGET_DIR)/mypro.bin
 
 $(TARGET_DIR)/bootsect.bin: bootsect.s
 	$(AS) -o $(TARGET_DIR)/bootsect.bin bootsect.s
@@ -70,6 +70,10 @@ $(TARGET_DIR)/shell.bin: shell.c unistd.c
 	$(CC) -o $(TARGET_DIR)/shell.o shell.c
 	$(CC) -o $(TARGET_DIR)/unistd.o unistd.c
 	$(LD) $(TARGET_DIR)/shell.o $(TARGET_DIR)/unistd.o -Ttext 0x00000000 -e shell_main -o $(TARGET_DIR)/shell.bin
+
+$(TARGET_DIR)/mypro.bin: mypro.c unistd.c
+	$(CC) -o $(TARGET_DIR)/mypro.o mypro.c
+	$(LD) $(TARGET_DIR)/mypro.o $(TARGET_DIR)/unistd.o -Ttext 0x00000000 -e main -o $(TARGET_DIR)/mypro.bin
 
 
 

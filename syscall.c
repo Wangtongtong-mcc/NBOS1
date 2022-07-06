@@ -306,14 +306,14 @@ int sys_execve(struct intr_context *ptr){
 		return -1;
 	};
 
-	// 3. 为该进程新建页目录,并复制内核空间的页目录
+	// 3. 为该进程新建页目录,并复制内核空间的页目录；重新设置下一个可供分配的虚拟地址
 	p->pagedir = kalloc();
 	memcopy((unsigned char *)(&(pagedir[0x300])),(unsigned char *)(p->pagedir + 0x300),PAGESIZE-0xc00);
+	p->next_vir_addr = 0;
 
-	// 4. 修改进程状态
-	p->ctx.esp = PAGESIZE;
+	// 4. 修改进程寄存器
+	p->ctx.esp = PAGESIZE - 16;
 	p->ctx.eip = entry;
-	p->pstate = RUNNABLE;
 
 	// 5. 切换页目录(PCD=PWT=0)
 	unsigned int dir = VIR_2_PHY((unsigned int )p->pagedir);
@@ -323,13 +323,8 @@ int sys_execve(struct intr_context *ptr){
 	unsigned int * user = ualloc(&(p->next_vir_addr),p->pagedir);
 	memmov((unsigned char *)BUFFER_START, (unsigned char *)user,(unsigned int)PAGESIZE);
 
-	// 7. 切换进程
-	struct pcb *father = mycpu.current_process;
-	father->pstate = RUNNABLE;
-
-	mycpu.current_process = p;
+	// 切换上下文
 	p->pstate = RUNNING;
-
-	switchktou(&(father->ctx),&(p->ctx));
+	switchCtx(&(p->ctx));
 
 }

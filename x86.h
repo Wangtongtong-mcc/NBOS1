@@ -13,6 +13,7 @@
 #define inw(port,data) \
 	asm("inw %w1, %0": "=a"(data): "Nd"(port))
 
+
 // 磁盘端口
 #define IDE_DATA_PORT 0x1f0
 #define IDE_SECTOR_COUNT_PORT 0x1f2
@@ -36,6 +37,15 @@
 #define PIC_S1 0xa0
 #define PIC_S2 0xa1
 
+
+// 8253芯片端口
+#define COUNTER0 0x40
+#define COUNTER1 0x41
+#define COUNTER2 0x42
+#define MODE_CONTROL 0x43
+
+#define FREQUENCY 1193180
+#define COUNT (FREQUENCY/10)
 
 #endif
 

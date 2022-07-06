@@ -9,6 +9,7 @@
 
 void loader_main (void){
 
+
 	// 加载数据段寄存器
 	asm("mov $0x0010, %ax;mov %ax, %ds;mov %ax, %ss; mov %ax, %es");
 

@@ -49,7 +49,7 @@ void first_user_process(void){
 	// 首先，创建一个新进程
 	struct pcb * p = create_process();
 	// 进程为shell(为简单，一个用户进程最大为PAGESIZE)
-	p->sector = 206;
+	p->sector = SHELL_SECTOR;
 	p->size = PAGESIZE;
 
 	// 将进程先加载到内核缓冲区处, 获取该进程的入口地址
@@ -63,7 +63,7 @@ void first_user_process(void){
 	p->ctx.ds = UDATA_SELECTOR;
 	p->ctx.es = p->ctx.ds;
 	p->ctx.ss = p->ctx.ds;
-	p->ctx.esp = PAGESIZE;
+	p->ctx.esp = PAGESIZE - 16;
 	p->ctx.eip = pentry;
 
 	// 将该进程的状态改为可运行
@@ -129,12 +129,15 @@ void start_user_process(void){
 	// 切换进程状态
 	p->pstate = RUNNING;
 	// 切换上下文
-	switchktou(&(mycpu.kernel_context),&(p->ctx));
+	switchktou(&(pcblist[0].ctx),&(p->ctx));
 	// 返回内核后，首先要
 
 
 
 }
+
+
+
 
 
 
@@ -182,7 +185,7 @@ struct pcb * allocProcess(void){
 		}
 	}
 	// 设置进程初始状态
-	p->pstate = BORN;
+	p->pstate = RUNNABLE;
 	// 设置新进程pid
 	p->pid = pid;
 	p->father_pid = mycpu.current_process->pid;
@@ -220,6 +223,9 @@ int copyContext(struct intr_context *father,struct pcb *p){
 	p->ctx.cs = father->cs;
 	p->ctx.ss = father->ss;
 
+	// eip
+	p->ctx.eip = father->eip;
+
 	// 标志寄存器
 	p->ctx.eflags = father->eflags;
 
@@ -251,7 +257,7 @@ int readSegment(struct inode *in, struct program_header *programHeader, unsigned
 		// 将所需内容复制到location处
 		memcopy(arr,p,left);
 		// 更新offset和当前目的指针
-		segend_offset +=left;
+		segstart_offset +=left;
 		p += left;
 	}
 
@@ -302,8 +308,9 @@ int loadProcess(struct inode * in){
 	// 3. 返回入口地址
 	return elfHeader->e_entry;
 
-
-
 }
+
+
+
 
 

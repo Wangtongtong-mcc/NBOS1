@@ -126,24 +126,26 @@ int strcmpa(char *string1, char *string2, int size){
 }
 
 /* strmatch用于确认dest中是否存在source
+ * size为dest大小
  * 存在，返回偏移字节；
  * 不存在，返回-1
  * */
-int strmatch(char *source, char *dest){
+int strmatch(char *source, char *dest,int size){
 
 	int source_size = strsize(source);
-	int dest_size = strsize(dest);
+
 	int offset = 0;
 	char *string = dest;
-	while(offset < dest_size){
+
+	while(offset < size){
 		//  先匹配首字母
-		while (((*string)!= (*source)) && ((*string) != '\0')){
+		while (((*string)!= (*source)) && (offset < size)){
 			offset++;
 			string++;
 		}
 		// 若找到相同的首字母，则匹配剩余字符串，即比较两者是否相等
 		// 未找到相同首字母，返回-1
-		if((*string) == '\0'){
+		if(offset == size){
 			return -1;
 		}
 		int result = strcmpa(source,string,source_size);

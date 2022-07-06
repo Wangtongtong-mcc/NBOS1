@@ -25,6 +25,6 @@ COMMAND="rm -rf $REMOTEPATH; \
 dd if=target/bootsect.bin of=/Users/wangtongtong/opt/bochs/60hd.img bs=512 count=1 conv=notrunc
 dd if=target/loader.bin of=/Users/wangtongtong/opt/bochs/60hd.img bs=512 count=5 seek=1 conv=notrunc
 dd if=target/kernel.bin of=/Users/wangtongtong/opt/bochs/60hd.img bs=512 count=200 seek=6 conv=notrunc
-dd if=target/shell.bin of=/Users/wangtongtong/opt/bochs/60hd.img bs=512 count=11 seek=356 conv=notrunc
-dd if=target/mypro.bin of=/Users/wangtongtong/opt/bochs/60hd.img bs=512 count=11 seek=371 conv=notrunc
+dd if=target/shell.bin of=/Users/wangtongtong/opt/bochs/60hd.img bs=512 count=11 seek=357 conv=notrunc
+dd if=target/mypro.bin of=/Users/wangtongtong/opt/bochs/60hd.img bs=512 count=11 seek=372 conv=notrunc
 

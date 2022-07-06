@@ -19,6 +19,7 @@ void general_protection_handler(void);
 void page_fault_handler(void);
 void syscall_handler(void);
 void other_exception_handler(void);
+void timer_handler(void);
 // 中断分派函数
 void interrupt_assign(struct intr_context * ptr);
 // 中断初始化函数

@@ -38,11 +38,11 @@ struct context{                                                 // 存储进程�
 #define OPEN 1                                                  // 文件是否打开
 #define CLOSE 0
 																// 用户进程所在扇区
-#define SHELL_SECTOR 356
-#define MYPRO_SECTOR 371
+#define SHELL_SECTOR 357
+#define MYPRO_SECTOR 372
 
 #define SHELL_BLOCKS 15
-#define MYPRO_BLOCKS 5
+#define MYPRO_BLOCKS 15
 
 struct task_struct{                                             // 任务状态信息
 	unsigned int link;         // 上一个任务选择子
@@ -239,7 +239,6 @@ typedef int(*sn_ptr)(struct intr_context *ptr);
 
 // 内存与硬盘
 #define SECTOR_SIZE 512                                             // 磁盘扇区大小
-#define KERNEL_SECTOR 5                                             // 内核在磁盘中的起始扇区
 
 #define PAGESIZE 4096                   // 页面大小
 #define PAGE_P 1                        // 页结构属性
@@ -318,7 +317,6 @@ struct pcb{                 // 存储进程信息，即进程控制块
 struct cpu{                                         // cpu当前运行情况
 	struct task_struct * current_task;              // 当前任务
 	struct pcb * current_process;                   // 当前进程
-	struct context kernel_context;                  // 内核上下文？？？？？
 };
 
 

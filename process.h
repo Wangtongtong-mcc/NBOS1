@@ -13,6 +13,7 @@ void switchktou(struct context * source, struct context * dest);
 struct pcb * allocProcess(void);
 int copyContext(struct intr_context *father,struct pcb *p);
 int loadProcess(struct inode * in);
+void switchCtx(struct context * ctx);
 
 
 

@@ -3,6 +3,7 @@
 global divide_error_handler,debug_handler,nmi_handler,breakpoint_handler,overflow_handler,bound_handler
 global invalid_opcode_handler,double_fault_handler,invalid_tss_handler,segment_not_present_handler
 global stack_segment_handler,general_protection_handler,page_fault_handler,syscall_handler,other_exception_handler
+global timer_handler
 
 extern interrupt_assign,print,page_np_handler
 
@@ -241,6 +242,15 @@ return:
 	iret
 
 
+; timer_handler用于处理时钟中断
+; Vector No.:0x20;
+; 发生中断后，处理器依次在栈中压入SS,ESP,EFLAGS,CS,EIP
+; ------------------------------------------------------
+timer_handler:
+	push 0
+	push 0x20
+	jmp interrupt_entry
+
 ; syscall_handler用于处理系统调用
 ; Vector No.:0x80 ;
 ; 发生中断后，处理器依次在栈中压入SS,ESP,EFLAGS,CS,EIP
@@ -250,6 +260,9 @@ syscall_handler:
 	push 0
 	push 0x80
 	jmp interrupt_entry
+
+
+
 
 
 ; other_exception_handler用于处理除上述的其他中断
@@ -263,5 +276,7 @@ other_exception_handler:
 
 msg:
 	db 'Other Page Fault Occur!'
+msg1:
+	db 'Timer'
 
 

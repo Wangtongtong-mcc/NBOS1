@@ -350,9 +350,10 @@ void init_userpro(){
 		in_shell.block_no[i] = SHELL_SECTOR - SUPER_BLOCK_SECTOR + i;
 		update_dataBlockBit(in_shell.block_no[i],BLOCK_BUSY);
 	}
+
 	for(int j = 0; j < MYPRO_BLOCKS; j++){
 		in_mypro.block_no[j] = MYPRO_SECTOR - SUPER_BLOCK_SECTOR + j;
-		update_dataBlockBit(in_shell.block_no[j],BLOCK_BUSY);
+		update_dataBlockBit(in_mypro.block_no[j],BLOCK_BUSY);
 	}
 
 	// 补充inode属性
@@ -448,7 +449,7 @@ int seekNextInode(struct inode * root_iptr, char *path){
 		// 读入一个block
 		k_readsector(block,root_iptr->block_no[i]+SUPER_BLOCK_SECTOR);
 		// 在目录中匹配，获取文件名在本block的offset
-		offset = strmatch(file_name,block);
+		offset = strmatch(file_name,block,512);
 		// 找到则退出循环
 		if (offset != -1){
 			break;

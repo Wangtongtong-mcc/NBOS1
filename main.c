@@ -20,12 +20,13 @@ void main(void){
 
 	clear_screen();
 
+
 	print("Kernel is working!\n");
 
-	// 初始化中断
-	init_interrupt();
-	// 初始化8259A
+	// 初始化8259A,其中包括对时钟芯片的初始化
 	init_pic();
+	// 初始化中断描述符表
+	init_interrupt();
 	// 初始化内存结构
 	init_memory();
 	// 初始化tss
@@ -37,11 +38,7 @@ void main(void){
 	// 创建第一个用户进程shell
 	first_user_process();
 	// 开启第一个用户进程
-	// 中断初始化之后，可以打开中断
-	// asm("sti");
 	start_user_process();
-
-
 
 
 	while (1) {

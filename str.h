@@ -13,7 +13,7 @@ int findfirstsprt(char * string, char *separator);
 
 void strcut(char *string, char *separator, char *result);
 
-int strmatch(char *source,char *dest);
+int strmatch(char *source,char *dest, int size);
 
 int strcount(char *string, char a);
 
