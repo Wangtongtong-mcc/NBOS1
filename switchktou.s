@@ -1,10 +1,37 @@
-; ---------------------------------------------------------
+; --------------------------------------------------------
 ; switchktou主要用于将内核上下文切换为用户进程上下文
 ; 参数分别为内核上下文信息地址和待切换用户进程上下文信息地址
 ; ---------------------------------------------------------
 
 [bits 32]
-global switchktou,switchCtx
+global switchktou,switchCtx,switch_to_user
+
+switch_to_userr:
+
+	push ebp
+	mov ebp, esp
+
+; 将用户态iret参数压栈，分别压入ss , esp, eflags, cs, eip
+	push 0x23
+	push ebp
+	pushf
+	push dword 0x1b
+	push dword [ebp + 4]
+
+; 切换数据段选择子
+	mov ax, 0x23
+	mov ds, ax
+	mov es, ax
+
+; 切换用户态
+	iret
+
+
+
+
+
+
+
 switchktou:
 	mov ebp, esp
 	mov eax, [ebp+4]						; 原进程的上下文地址
@@ -25,7 +52,7 @@ switchktou:
 	mov [eax+40], es
 	mov [eax+44], ds
 
-; eip为调用switch前的地址，保存在esp中。返回内核时，从switch后开始执行。
+; eip为调用switchktou前的地址，保存在esp中。返回内核时，从switch后开始执行。
 	mov ebx, [esp]
 	mov [eax+48], ebx
 	mov [eax+52], cs
@@ -75,6 +102,7 @@ switchCtx:
 	mov edx, [ebp+4]						; 要切换的上下文
 
 ; edx还要使用，最后恢复
+; 恢复通用寄存器
 	mov edi, [edx]
 	mov esi, [edx+4]
 	mov ebp, [edx+8]
@@ -82,12 +110,13 @@ switchCtx:
 	mov ecx, [edx+24]
 	mov eax, [edx+28]
 
+; 恢复段寄存器
 	mov gs, [edx+32]
 	mov fs, [edx+36]
 	mov es, [edx+40]
 	mov ds, [edx+44]
 
-; 分别压入ss , esp, eflags, cs, eip
+; 分别压入ss , esp, eflags, cs, eip，恢复进程运行环境
 	push dword [edx+64]
 	push dword [edx+60]
 	push dword [edx+56]

@@ -2,13 +2,14 @@
 #include "memory.h"
 #include "print.h"
 #include "elf.h"
+#include "file.h"
+#include "kernel.h"
 
-extern unsigned int pagedir[PAGE_STRUCT_ENTRIES];                  // 内核页目录目录
 struct pcb pcblist[PCB_MAX];                                       // pcb链表
 unsigned int nextpid = 1;                                          // 下一个进程id
 extern struct cpu mycpu;
 extern struct open_file fileList[FILE_MAX_INSYS];
-extern unsigned int kvir_next_addr;
+extern unsigned int pagedir[PAGE_STRUCT_ENTRIES];
 
 /* init_pcb为用于初始化进程控制块
  * */
@@ -30,48 +31,17 @@ void init_pcb(void){
 		}
 	}
 
-	// 进程0为内核
+	// 创建0号进程
 	pcblist[0].pid = 0;
 	pcblist[0].pstate = RUNNING;
-	pcblist[0].pagedir = &pagedir[0];
-	pcblist[0].next_vir_addr = kvir_next_addr;
+	pcblist[0].pagedir = (unsigned char *)pagedir;
+	// 设置为cpu当前进程
+	mycpu.current_process = &pcblist[0];
 
 	print("Initial_pcb Done!\n");
-
 }
 
-/* first_user_process为创建第一个用户进程
- * */
-void first_user_process(void){
 
-	print("Create first user process!\n");
-
-	// 首先，创建一个新进程
-	struct pcb * p = create_process();
-	// 进程为shell(为简单，一个用户进程最大为PAGESIZE)
-	p->sector = SHELL_SECTOR;
-	p->size = PAGESIZE;
-
-	// 将进程先加载到内核缓冲区处, 获取该进程的入口地址
-	unsigned int pentry = load_process((unsigned char *)BUFFER_START,p->sector);
-
-	// 将内核地址空间所对应的页目录内容复制到进程页目录，则该进程可共享内核地址空间
-	memcopy((unsigned char *)(&pagedir)+0xc00, (unsigned char *)p->pagedir+0xc00, PAGESIZE-0xc00);
-
-	// 填充该进程的上下文
-	p->ctx.cs = UCODE_SELECTOR;
-	p->ctx.ds = UDATA_SELECTOR;
-	p->ctx.es = p->ctx.ds;
-	p->ctx.ss = p->ctx.ds;
-	p->ctx.esp = PAGESIZE - 16;
-	p->ctx.eip = pentry;
-
-	// 将该进程的状态改为可运行
-	p->pstate = RUNNABLE;
-
-	print("Successfully created the first user process!\n");
-
-}
 
 /* create_process为创建进程
  * */
@@ -91,7 +61,7 @@ struct pcb * create_process(void){
 	p->pid = nextpid;
 	nextpid++;
 	// 为该进程分配一个页作为其页目录
-	p->pagedir = kalloc();
+	p->pagedir = alloc_page();
 	// 为该进程打开标准输入，标准输出，标准错误
 	for(int i = 0; i < 3; i++){
 		p->fdlist[i].open_flag = OPEN;
@@ -104,37 +74,78 @@ struct pcb * create_process(void){
 	return p;
 }
 
-/* start_user_process为开启/切换进程
+/* first_user_process为创建第一个用户进程
  * */
-void start_user_process(void){
-
-	print("Switch to the first user process!\n");
-
-	// 找出pcb链表中可运行的进程
-	struct pcb * p;
-	for(int i = 0; i < PCB_MAX; i++){
-		if (pcblist[i].pstate == RUNNABLE){
-			p = &(pcblist[i]);
-			break;
-		}
-	}
-	// 设置cpu当前进程
-	mycpu.current_process = p;
-	// 切换页目录(PCD=PWT=0)
-	unsigned int dir = VIR_2_PHY((unsigned int )p->pagedir);
-	asm("mov %%eax, %%cr3"::"a"(dir));
-	// 将用户进程复制到用户地址空间（虚拟地址从0x00000000开始，物理分配UFREE_START之上的页）
-	unsigned int * user = ualloc(&(p->next_vir_addr),p->pagedir);
-	memmov((unsigned char *)BUFFER_START, (unsigned char *)user,(unsigned int)PAGESIZE);
-	// 切换进程状态
-	p->pstate = RUNNING;
-	// 切换上下文
-	switchktou(&(pcblist[0].ctx),&(p->ctx));
-	// 返回内核后，首先要
-
-
-
-}
+//void first_user_process(void){
+//
+//	print("Create first user process!\n");
+//
+//	// 首先，创建一个新进程
+//	struct pcb * p = create_process();
+//
+//	// 将shell进程加载到内存中
+//	unsigned char * elfHeader_page = alloc_page();
+//
+//
+//
+//	// 进程为shell(为简单，一个用户进程最大为PAGESIZE)
+//	p->sector = SHELL_SECTOR;
+//	p->size = PAGESIZE;
+//
+//	// 将进程先加载到内核缓冲区处, 获取该进程的入口地址
+//	unsigned int pentry = load_process((unsigned char *)BUFFER_START,p->sector);
+//
+//	// 将内核地址空间所对应的页目录内容复制到进程页目录，则该进程可共享内核地址空间
+//	memcopy((unsigned char *)(&pagedir)+0xc00, (unsigned char *)p->pagedir+0xc00, PAGESIZE-0xc00);
+//
+//	// 填充该进程的上下文
+//	p->ctx.cs = UCODE_SELECTOR;
+//	p->ctx.ds = UDATA_SELECTOR;
+//	p->ctx.es = p->ctx.ds;
+//	p->ctx.ss = p->ctx.ds;
+//	p->ctx.esp = PAGESIZE - 16;
+//	p->ctx.eip = pentry;
+//
+//	// 将该进程的状态改为可运行
+//	p->pstate = RUNNABLE;
+//
+//	print("Successfully created the first user process!\n");
+//
+//}
+//
+//
+//
+///* start_user_process为开启/切换进程
+// * */
+//void start_user_process(void){
+//
+//	print("Switch to the first user process!\n");
+//
+//	// 找出pcb链表中可运行的进程
+//	struct pcb * p;
+//	for(int i = 0; i < PCB_MAX; i++){
+//		if (pcblist[i].pstate == RUNNABLE){
+//			p = &(pcblist[i]);
+//			break;
+//		}
+//	}
+//	// 设置cpu当前进程
+//	mycpu.current_process = p;
+//	// 切换页目录(PCD=PWT=0)
+//	unsigned int dir = VIR_2_PHY((unsigned int )p->pagedir);
+//	asm("mov %%eax, %%cr3"::"a"(dir));
+//	// 将用户进程复制到用户地址空间（虚拟地址从0x00000000开始，物理分配UFREE_START之上的页）
+//	unsigned int * user = ualloc(&(p->next_vir_addr),p->pagedir);
+//	memmov((unsigned char *)BUFFER_START, (unsigned char *)user,(unsigned int)PAGESIZE);
+//	// 切换进程状态
+//	p->pstate = RUNNING;
+//	// 切换上下文
+//	switchktou(&(pcblist[0].ctx),&(p->ctx));
+//	// 返回内核后，首先要
+//
+//
+//
+//}
 
 
 
@@ -270,47 +281,101 @@ int readSegment(struct inode *in, struct program_header *programHeader, unsigned
  * in为进程在文件系统中对应的inode
  * location为将进程加载到内核的该虚拟地址处
  */
-int loadProcess(struct inode * in){
+void * loadProcess(struct inode * in){
 
 	// 1. 首先加载进程的elf_header
-	// 取文件前四个block，保证可读到完整的elf_header，program_header，将程序的这些元数据读到内核缓存的第二个页面
-	struct elf_header *elfHeader = (struct elf_header *) (BUFFER_START + PAGESIZE);
-	for(int i = 0; i < 4; i++){
-		unsigned int block = in->block_no[i];
-		if(block == 0){
-			return -1;
-		}
-		k_readsector((unsigned char*)(BUFFER_START + PAGESIZE + i*BLOCK_SIZE ),block + SUPER_BLOCK_SECTOR);
-	}
+	struct elf_header *elfHeader = (struct elf_header *) alloc_page();
+	read_file_at_offset(in,0,(unsigned char *)elfHeader, PAGESIZE);
 	if (elfHeader->magic != ELF_MAGIC) {
-		return -1;
+		return NULL;
 	}
 
-	// 2. 根据elf_header中的信息，将各程序段加载到缓存处
-	// firstVir为第一个可加载段的虚拟地址，loadseg为科技在段的数量
-	unsigned int firstVir;
-	int loadseg = 0;
+	// 2.根据elf_header中的信息，将各程序段加载到指定地址处
 	struct program_header * programHeader = (struct program_header *) ((unsigned char *) elfHeader + elfHeader->e_phoff);
+
 	for (int j = 0; j < elfHeader->e_phnum; programHeader++, j++) {
 		// 只有类型为LOAD_SEG的段才需要加载到内存中
 		if(programHeader->p_type == LOAD_SEG){
-			loadseg++;
-			// 需确认第一个段的虚拟地址，之后加载时，才能确定各个段的相对位置
-			if(loadseg == 1){
-				firstVir = programHeader->p_vaddr;
+			// 从磁盘中中加载本段
+			struct page_t * current_vir_page_ptr = (struct page_t *)(programHeader->p_vaddr & 0xfffff000);
+			struct page_t * vir_page_end = (struct page_t *)ALIGN_UP(programHeader->p_vaddr + programHeader->p_memsize);
+			while (current_vir_page_ptr < vir_page_end){
+				struct page_t * new_page =(struct page_t *) VIR_2_PHY((unsigned int)alloc_page());
+				page_map(current_vir_page_ptr,new_page,1);
+				current_vir_page_ptr += PAGESIZE;
 			}
-			// 从内存中加载本段
-			unsigned char *location = (unsigned char *)(programHeader->p_vaddr - firstVir + BUFFER_START);
-			readSegment(in, programHeader, location);
+			read_file_at_offset(in,programHeader->p_offset,(unsigned char *)programHeader->p_vaddr,programHeader->p_filesize);
+
 		}
 	}
 
+
 	// 3. 返回入口地址
-	return elfHeader->e_entry;
+	return (void *)elfHeader->e_entry;
 
 }
 
+/* haveChildren用于确认进程pid是否有子进程
+ * 返回子进程数量
+ * 没有返回-1
+ */
+int haveChildren(unsigned int pid){
+	int child = -1;
+	for(int i = 0; i < PCB_MAX;i++){
+		if(pcblist[i].father_pid == pid){
+			child++;
+		}
+	}
+	return child;
+}
 
+/* schedule用于调度到新进程，本进程变为可运行状态
+ */
+void schedule(void){
 
+	// 1.找出pcb链表中可运行的进程
+	struct pcb * p = NULL;
+	for(int i = 0; i < PCB_MAX; i++){
+		if (pcblist[i].pstate == RUNNABLE){
+			p = &(pcblist[i]);
+			break;
+		}
+	}
+
+	if(p == NULL){
+		return;
+	}
+
+	// 2. 设置cpu当前进程
+	struct pcb * last = mycpu.current_process;
+	mycpu.current_process = p;
+
+	// 3. 切换页目录
+	unsigned int dir = VIR_2_PHY((unsigned int )p->pagedir);
+	asm("mov %%eax, %%cr3"::"a"(dir));
+
+	// 4. 切换进程状态
+	last->pstate = RUNNABLE;
+	p->pstate = RUNNING;
+
+	// 5. 切换上下文
+	switchCtx(&(p->ctx));
+}
+
+/* getPCB用于获取进程pid的进程控制块
+ */
+struct pcb * getPCB(unsigned int pid){
+
+	struct pcb * p;
+
+	for (int i = 0; i < PCB_MAX; i++){
+		if(pcblist[i].pid == pid){
+			p = &pcblist[i];
+		}
+	}
+
+	return p;
+
+}
 
 

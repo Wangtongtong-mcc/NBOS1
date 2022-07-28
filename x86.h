@@ -14,6 +14,7 @@
 	asm("inw %w1, %0": "=a"(data): "Nd"(port))
 
 
+
 // 磁盘端口
 #define IDE_DATA_PORT 0x1f0
 #define IDE_SECTOR_COUNT_PORT 0x1f2
@@ -45,7 +46,17 @@
 #define MODE_CONTROL 0x43
 
 #define FREQUENCY 1193180
-#define COUNT (FREQUENCY/10)
+#define COUNT (FREQUENCY/100)
+
+
+// 键盘8042键盘控制器端口
+#define INPUT_BUFFER 0x60
+#define OUTPUT_BUFFER 0x60
+#define KEYBOARD_STATUS 0x64
+#define KEYBOARD_CONTROL 0x64
+
+
+int xchg(int* s, int i);
 
 #endif
 

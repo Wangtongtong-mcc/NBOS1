@@ -325,6 +325,7 @@ void create_rootDir(){
 	allocBlock(&rootDirInode);
 
 	rootDirInode.mode = DIRECTORY_FILE;
+	rootDirInode.size = 0;
 
 	// 将根目录的inode写回磁盘
 	writeInode(&rootDirInode);
@@ -368,7 +369,13 @@ void init_userpro(){
 	getRootDirInode(&root);
 
 	writeDirectory(&root,"/shell",&in_shell);
+	root.size += sizeof(struct dir_item);
+	writeInode(&root);
+
 	writeDirectory(&root,"/mypro",&in_mypro);
+	root.size += sizeof(struct dir_item);
+	writeInode(&root);
+
 
 }
 
@@ -409,6 +416,7 @@ void init_file(void){
 	init_superBlock();
 	// 初始化inode链表
 	init_inodeList();
+
 	// 初始化dataBlock位图
 	init_dataBlockBit();
 	// 创建根目录
@@ -433,38 +441,49 @@ void init_file(void){
 
 
 /* seekNextInode用于确认path的inode
- * root_iptr是path父目录的inode
+ * iptr是path父目录的inode
  * */
-int seekNextInode(struct inode * root_iptr, char *path){
+int seekNextInode(struct inode * iptr, char *path){
+
 	// 获取文件名称
 	char file_name[FILE_NAME_MAX];
 	strcut(path,"/",file_name);
 
-	// 从根目录中获取它的block，并比对block的内容是否有path
+	// 读取目录内容，并比对是否存在要找的文件
+	// offset是文件名称在目录某个block里的偏移量，i为文件名称所在的目录 block号的下标，blocks是目录文件占用的block数量
 	int offset = -1;
 	int i;
-	unsigned char block[512];
+	unsigned char target_block[512];
+	unsigned int blocks = iptr->size / BLOCK_SIZE;
+	if (iptr->size % BLOCK_SIZE > 0){
+		blocks ++;
+	}
 
-	for(i = 0; i < MAX_BLOCKS_InFILE; i++){
+	// 遍历目录的blocks个数据block，匹配文件名称所在的block及其offset
+	for(i = 0; i < blocks; i++){
 		// 读入一个block
-		k_readsector(block,root_iptr->block_no[i]+SUPER_BLOCK_SECTOR);
+		k_readsector(target_block,iptr->block_no[i]+SUPER_BLOCK_SECTOR);
 		// 在目录中匹配，获取文件名在本block的offset
-		offset = strmatch(file_name,block,512);
+		offset = strmatch(file_name,target_block,512);
 		// 找到则退出循环
 		if (offset != -1){
 			break;
 		}
+
 	}
 
+	// 若在目录中没有找到文件名称，就返回
 	if(offset == -1){
 		return -1;
 	}
+
 	// 获取file_name所在的inode
-	struct dir_item * dptr = (struct dir_item *)(block + offset);
+	struct dir_item * dptr = (struct dir_item *)(target_block + offset);
 	unsigned int inode_block_no = dptr->inode_block_no;
 	unsigned int inode_offset = dptr->inode_offset;
+
 	// 将其inode读入root_iptr
-	read_inode(inode_block_no,inode_offset,root_iptr);
+	read_inode(inode_block_no,inode_offset,iptr);
 }
 
 /* seekFileInode用于寻找文件path(绝对路径)的inode，并将其存放于iptr
@@ -596,27 +615,36 @@ int writeDirectory(struct inode *base_inode, unsigned char *path, struct inode *
 	}
 
 	// 取上级目录中空闲的block的offset
-	int offset = -1;
-	int i = 0;
-	unsigned char dir_block[512];
+	int index = base_inode->size / BLOCK_SIZE;
+	int offset = base_inode->size % BLOCK_SIZE;
+	int dir_item_size = sizeof(struct dir_item);
 
-	for(i = 0; i < MAX_BLOCKS_InFILE; i++){
-		k_readsector(dir_block,base_inode->block_no[i]+SUPER_BLOCK_SECTOR);
-		offset = getFreeOffsetInBlock(dir_block, sizeof(struct dir_item));
-		// 如果获取到空闲offset, 则退出循环
-		if (offset >= 0){
-			break;
+	// 判断index对应的block是否可容纳新的目录项
+	if (offset + dir_item_size > BLOCK_SIZE){ // 不可容纳
+
+		// 写入下一个block
+		index++;
+		offset = 0;
+
+		// 判断下一个block是否已经分配
+		if(base_inode->block_no[index] == 0){
+			allocBlock(base_inode);
 		}
 	}
-	// 将文件名和inode号写到offset处
-	if(offset >= 0){
-		struct dir_item *pos = (struct dir_item *)(dir_block + offset);
-		pos->inode_offset = iptr->my_inode_offset;
-		pos->inode_block_no = iptr->my_inode_block_no;
-		memmov(path0,pos->name,strsize(path0)+1);
-	}
-	// 将block写回磁盘，block号为base_inode->block_no[i]+SUPER_BLOCK_SECTOR
-	write_block(dir_block,base_inode->block_no[i]);
+
+	// 读入要写入的block
+	unsigned char dir_block[512];
+	k_readsector(dir_block,base_inode->block_no[index]+SUPER_BLOCK_SECTOR);
+
+	// 写入新目录项
+	struct dir_item *pos = (struct dir_item *)(dir_block + offset);
+	pos->inode_offset = iptr->my_inode_offset;
+	pos->inode_block_no = iptr->my_inode_block_no;
+	memmov(path0,pos->name,strsize(path0)+1);
+
+
+	// 将修改后的block写回磁盘
+	write_block(dir_block,base_inode->block_no[index]);
 
 	return 0;
 
@@ -673,25 +701,20 @@ int writeFile(struct open_file * file,struct inode *iptr, void * ptr, unsigned i
 
 }
 
-/* readFile用于向file对应的文件的offset处写入ptr，大小为size个字节
- * */
-int readFile(struct open_file * file,struct inode *iptr, void * ptr, unsigned int size){
-
-	// 取当前offset,并判断是否已到文件大小
-	int offset = file->offset;
+int read_file_at_offset(struct inode *iptr, int offset, unsigned char * buf, unsigned int size){
 	// 已到文件末尾，返回-1
 	if ( offset > iptr->size){
 		return -1;
 	}
 
 	// 读入文件
-	unsigned char * start = (unsigned char *)ptr;
-	unsigned char * end = start + size;
+	unsigned char * buf_next = buf;
+	unsigned char * buf_end = buf + size;
 
 	// 读入的字节数
 	int readSize = 0;
 
-	while (start < end){
+	while (buf_next < buf_end){
 		// 取当前offset所对应的block_no
 		int index = offset / BLOCK_SIZE;
 		unsigned int block_no = iptr->block_no[index];
@@ -706,25 +729,33 @@ int readFile(struct open_file * file,struct inode *iptr, void * ptr, unsigned in
 		// 找到本block中offset对应的位置
 		unsigned int posInBlock = offset % BLOCK_SIZE;
 		// 本block要读入的字节数
-		unsigned int left = (BLOCK_SIZE - posInBlock) < (end - start) ? (BLOCK_SIZE - posInBlock) : (end - start);
+		unsigned int left = (BLOCK_SIZE - posInBlock) < (buf_end - buf_next) ? (BLOCK_SIZE - posInBlock) : (buf_end - buf_next);
 
 
 		// 将要读的内容复制到指定地方
-		memmov(arr+posInBlock,start,left);
+		memmov(arr+posInBlock,buf_next,left);
 
 		readSize += left;
 
 		// 更新start和offset
-		start += left;
+		buf_next += left;
 		offset += left;
 	}
 
-	// 读完后，更新文件表项中的offset
-	file->offset += readSize;
-
-
 	// 返回读入的字节数
 	return readSize;
+}
+
+/* readFile用于向file对应的文件的offset处写入ptr，大小为size个字节
+ * */
+int readFile(struct open_file * file,struct inode *iptr, void * ptr, unsigned int size){
+
+	int read_size = read_file_at_offset(iptr,file->offset,(unsigned char *)ptr,size);
+	if (read_size == -1){
+		return -1;
+	}
+	file->offset += read_size;
+	return read_size;
 
 
 }

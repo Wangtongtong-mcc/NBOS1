@@ -2,6 +2,9 @@
 #include "print.h"
 #include "memory.h"
 #include "x86.h"
+#include "lock.h"
+
+extern struct lock video_lock;
 
 unsigned int get_cursor(){
 
@@ -97,10 +100,14 @@ void put_char(unsigned char a){
 
 
 void print(unsigned char * p){
+	acquire(&video_lock);
+
 	while (*p != '\0'){
 		put_char(*p);
 		p++;
 	}
+
+	release(&video_lock);
 }
 
 char * num2ascii(unsigned int number, char * asciipos){
@@ -112,15 +119,24 @@ char * num2ascii(unsigned int number, char * asciipos){
 }
 
 void printn(unsigned int number){
+
+
 	char asciipos[9];
 	num2ascii(number,asciipos);
 	print(asciipos);
+
+
 }
 
 void clear_screen(){
+
+	acquire(&video_lock);
+
 	// 将屏幕都设置为黑底白字的空字符，光标位置置为0
 	for(int i = 0; i < 2000; i++){
 		set_char(i,0);
 	}
 	set_cursor(0);
+
+	release(&video_lock);
 }

@@ -3,6 +3,7 @@
 #include "x86.h"
 #include "syscall.h"
 #include "process.h"
+#include "keyboard.h"
 
 struct gate_desc idt[IDT_ENTRIES];              // idt中包含256个描述符
 char * intr_name[IDT_ENTRIES];                  // 存放中断名称
@@ -11,7 +12,7 @@ extern struct pcb pcblist[PCB_MAX];             // pcb链表
 extern struct cpu mycpu;
 
 // 系统调用函数指针数组
-sn_ptr sys_call_table[IDT_ENTRIES] = {[2]=sys_fork, sys_read, sys_write, sys_open, sys_close, [8]=sys_creat,[11]=sys_execve, [72]=sys_clear};
+sn_ptr sys_call_table[IDT_ENTRIES] = {[1]=sys_exit,sys_fork, sys_read, sys_write, sys_open, sys_close, sys_wait, [8]=sys_creat,[11]=sys_execve, [72]=sys_clear};
 
 void init_clock(){
 
@@ -64,8 +65,8 @@ void init_pic(void){
 	// 初始化时钟芯片8253
 	init_clock();
 
-	// OCW1: 打开时钟中断IRQ0
-	outb (PIC_M2, 0xfe);
+	// OCW1: 打开时钟中断IRQ0和键盘中断IRQ1
+	outb (PIC_M2, 0xfc);
 	outb(PIC_S2,0xff);
 
 	print("Init_pic done!\n");
@@ -125,6 +126,9 @@ void init_interrupt(void){
 	// 时钟中断
 	idt[32] = make_idt_desc(timer_handler,INTERRUPT_GATE_ATTRIBUTE);
 	intr_name[32] = "#Timer INTERRUPT";
+	// 键盘中断
+	idt[33] = make_idt_desc(keyboard_handler,INTERRUPT_GATE_ATTRIBUTE);
+	intr_name[33] = "# Keyboard Interrupt!";
 	// 系统调用
 	idt[128] = make_idt_desc(syscall_handler,SYSCALL_INTERRUPT_GATE_ATTRIBUTE);
 	intr_name[128] = "SYSTEM CALL";
@@ -168,8 +172,30 @@ void renew_handler(unsigned int vector, void(* function)(void)){
 /* page_np_handler用于处理缺页异常
  *
  * */
-void page_np_handler(unsigned int cr2, unsigned int errcode){
-	print("Page is not present!\n");
+void do_page_fault(struct intr_context * ptr){
+
+	// 判断是其他错误还是页面不存在错误, 错误码最后一位为0表示缺页
+	unsigned int errorcode = ptr->error_code;
+	if(errorcode & 0x00000001){
+		print("Other page fault!\n");
+	} else {
+		print("Page is not present!\n");
+
+		// 打印错误码
+		print("\nError Code:");
+		printn(errorcode);
+
+		// 打印发生中断时的CS，EIP，EFLAGS
+		print("\nCS\tEIP\tEFLAGS\n");
+		printn(ptr->cs);
+		print("\t");
+		printn(ptr->eip);
+		print("\t");
+		printn(ptr->eflags);
+
+	}
+
+
 }
 
 /* general_intr_handler为除系统调用外，其他中断的处理函数
@@ -205,33 +231,55 @@ void general_intr_handler(struct intr_context * ptr){
  */
 void do_timer_handler(struct intr_context * ptr){
 
-	// 找出pcb链表中可运行的进程
-	struct pcb * p;
+//	print("process:");
+//	printn(mycpu.current_process->pid);
+
+	// 1.找出pcb链表中可运行的进程，没有则直接返回
+	struct pcb * p = NULL;
 	for(int i = 0; i < PCB_MAX; i++){
 		if (pcblist[i].pstate == RUNNABLE){
 			p = &(pcblist[i]);
 			break;
 		}
 	}
+	if(p == NULL){
+		return;
+	}
 
-	// 设置cpu当前进程
-	struct pcb * father = mycpu.current_process;
+	// 2. 设置cpu当前进程
+	struct pcb * last = mycpu.current_process;
 	mycpu.current_process = p;
 
-	// 切换页目录(PCD=PWT=0)
+	print("process:");
+	printn(mycpu.current_process->pid);
+
+	// 3. 切换页目录
 	unsigned int dir = VIR_2_PHY((unsigned int )p->pagedir);
 	asm("mov %%eax, %%cr3"::"a"(dir));
 
-	// 切换进程状态
-	father->pstate = RUNNABLE;
+	// 4. 切换进程状态
+	last->pstate = RUNNABLE;
 	p->pstate = RUNNING;
 
-	// 切换上下文
-	switchktou(&(father->ctx),&(p->ctx));
+	// 5. 切换上下文
+	// 保存上下文到本进程控制块，将进入中断前的上下文保存到当前进程结构中
+	last->ctx.eip = ptr->eip;
+	last->ctx.eflags = ptr->eflags;
+	last->ctx.edi = ptr->edi;
+	last->ctx.eax = ptr->eax;
+	last->ctx.ecx = ptr->ecx;
+	last->ctx.esp = ptr->esp;
+	last->ctx.nesp = ptr->esp_current;
+	last->ctx.ebp = ptr->ebp;
+	last->ctx.ebx = ptr->ebx;
+	last->ctx.edx = ptr->edx;
+	last->ctx.esi = ptr->esi;
 
-	// print("In timer!");
+	switchCtx(&(p->ctx));
+
 
 }
+
 
 /* interrupt_assign为中断分派函数，由中断入口函数调用
  * 根据中断向量的不同，执行不同的中断处理函数
@@ -241,16 +289,28 @@ void interrupt_assign(struct intr_context * ptr){
 	// 单独处理系统调用
 	if (intr_no == 0x80){
 		// 取功能号
+		//print("SYS_CALL!");
 		unsigned int fun_no = ptr->eax;
 		// 调用具体的系统调用函数
 		sys_call_table[fun_no](ptr);
 	} else if(intr_no == 0x20){
+		//print("Timer!");
 		// 调用时钟中断处理函数
 		do_timer_handler(ptr);
+	} else if(intr_no == 0x21){
+		//print("Keyboard!");
+		// 调用键盘中断处理函数，位于keyboard.c中
+		do_keyboard_handler();
+	}else if(intr_no == 14) {
+		//print("Page Fault!");
+		do_page_fault(ptr);
 	} else{
+		//print("Other Interrupt!");
 		// 其余的中断统一处理，打印中断信息
 		general_intr_handler(ptr);
 	}
+
+
 
 
 }

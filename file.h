@@ -25,4 +25,6 @@ int seekFileInode(char *path, struct inode *iptr);
 
 int readFile(struct open_file * file,struct inode *iptr, void * ptr, unsigned int size);
 
+int read_file_at_offset(struct inode *iptr, int offset, unsigned char * buf, unsigned int size);
+
 #endif

@@ -13,6 +13,8 @@ int sys_close(struct intr_context *ptr);
 int sys_creat(struct intr_context *ptr);
 int sys_clear(struct intr_context *ptr);
 int sys_execve(struct intr_context *ptr);
+int sys_wait(struct intr_context *ptr);
+int sys_exit(struct intr_context *ptr);
 
 
 #endif

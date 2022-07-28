@@ -3,10 +3,12 @@
 #include "print.h"
 
 struct task_struct tss;
-extern unsigned int pagedir[PAGE_STRUCT_ENTRIES];                   // 内核页目录目录
-extern struct global_descriptor gdt;                                // gdt地址
+extern struct global_descriptor gdt[6];                                // gdt地址
 struct global_descriptor tss_descriptor;
 extern struct cpu mycpu;
+
+extern unsigned int pagedir [PAGE_STRUCT_ENTRIES];
+extern unsigned int stack[1024];
 
 /* init_tss用于初始化tss结构，注册到gdt中，并加载tr寄存器
  * */
@@ -14,12 +16,12 @@ void init_tss(void){
 	print("Initial TSS!\n");
 
 	// 首先填充内核tss结构
-	tss.cr3 = &pagedir;
+	tss.cr3 = (void *)VIR_2_PHY((unsigned int)pagedir);
 	tss.ss0 = KDATA_SELECTOR;
 	tss.cs = KCODE_SELECTOR;
 	tss.ds = KDATA_SELECTOR;
 	tss.ds = tss.es = tss.fs = tss.gs = tss.ds ;
-	tss.esp0 = (unsigned int)STACK_TOP;
+	tss.esp0 = (unsigned int)(stack+1024);
 
 	// 注册tss描述符到gdt中
 	unsigned int tss_base = (unsigned int) (&tss);
@@ -34,7 +36,7 @@ void init_tss(void){
 
 	unsigned int tss_index = (TSS_SELECTOR & 0xf8)>>3;
 
-	struct global_descriptor * tss_pos_in_gdt = (&gdt)+ tss_index;
+	struct global_descriptor * tss_pos_in_gdt = gdt+ tss_index;
 	*tss_pos_in_gdt = tss_descriptor;
 
 

@@ -82,3 +82,23 @@ int execve(const char *pathname, char * const argv[], char * const envp[]){
 
 }
 
+int wait(int *statloc){
+
+	int result;
+	asm("int $0x80"\
+	:"=a"(result)\
+	:"a"(SYS_wait),\
+	"b"(statloc));
+	return result;
+
+}
+
+
+void _exit(int status){
+
+	asm("int $0x80"\
+	::"a"(SYS_exit),\
+	"b"(status));
+
+}
+

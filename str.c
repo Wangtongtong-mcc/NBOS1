@@ -93,6 +93,7 @@ int findfirstsprt(char * string, char *separator){
 /* strcut用于截取string第一个separator及之前的内容，将其copy到result中
  * */
 void strcut(char *string, char *separator, char *result){
+
 	char * string1 = string;
 	int i = 0;
 	// 从字符串开头找分隔符，没找到原字符串不变
@@ -101,7 +102,7 @@ void strcut(char *string, char *separator, char *result){
 		i++;
 	}
 	// 找到分隔符后，将分隔符前的内容copy到result中
-	strcopy(string,result,i);
+	strcopy(string,result,i+1);
 
 }
 
@@ -138,11 +139,13 @@ int strmatch(char *source, char *dest,int size){
 	char *string = dest;
 
 	while(offset < size){
+
 		//  先匹配首字母
 		while (((*string)!= (*source)) && (offset < size)){
 			offset++;
 			string++;
 		}
+
 		// 若找到相同的首字母，则匹配剩余字符串，即比较两者是否相等
 		// 未找到相同首字母，返回-1
 		if(offset == size){

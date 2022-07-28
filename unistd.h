@@ -25,52 +25,62 @@
 
 
 // 系统调用功能号
+#define SYS_exit 1
 #define SYS_fork 2
 #define SYS_read 3
 #define SYS_write 4
 #define SYS_open 5
 #define SYS_close 6
+#define SYS_wait 7
 #define SYS_creat 8
 #define SYS_execve 11
 #define SYS_clear_screen 72
 
 
-// 成功返回已写入的字节数，出错返回-1
-int write(int fd, void *buf, unsigned int size);
-void clear_my_screen(void);
-// 成功返回新偏移量，出错返回-1
-int lseek(int fd, long offset, int whence);
-// 成功返回读到的字节数，出错返回-1
-int read(int fd, void *buf, unsigned int size);
-// 成功返回新文件描述符，出错返回-1
-int dup(int fd);
-int dup2(int fd, int fd2);
-// 成功返回0，出错返回-1
-int fsync(int fd);
-int fdatasync(int fd);
 
-void sync(void);
-// 出错返回-1，成功返回其他值
-int ioctl(int fd, int request);
-
-// 成功返回文件描述符，出错返回-1
-int open(const char *path, int oflag);
-int openat(int fd, char *path, int oflag);
-
-// 成功返回文件描述符，出错返回-1
-int creat(const char *path, unsigned short mode);
-
-// 成功返回0，出错返回-1
-int close (int fd);
-
-// 成功返回值依赖于cmd，出错返回-1
-int fcntl(int fd, int cmd);
-
+void _exit(int status);
 // 子进程返回0，父进程返回子进程pid
 int fork(void);
-
+// 成功返回读到的字节数，出错返回-1
+int read(int fd, void *buf, unsigned int size);
+// 成功返回已写入的字节数，出错返回-1
+int write(int fd, void *buf, unsigned int size);
+// 成功返回文件描述符，出错返回-1
+int open(const char *path, int oflag);
+// 成功返回0，出错返回-1
+int close (int fd);
+// 成功，返回pid;出错，返回-1；
+int wait(int *statloc);
+// 成功返回文件描述符，出错返回-1
+int creat(const char *path, unsigned short mode);
 // 成功，不返回；出错，返回-1
 int execve(const char *pathname, char * const argv[], char * const envp[]);
+void clear_my_screen(void);
+
+
+
+// 成功返回新偏移量，出错返回-1
+// int lseek(int fd, long offset, int whence);
+// 成功返回新文件描述符，出错返回-1
+//int dup(int fd);
+//int dup2(int fd, int fd2);
+// 成功返回0，出错返回-1
+//int fsync(int fd);
+//int fdatasync(int fd);
+//void sync(void);
+// 出错返回-1，成功返回其他值
+//int ioctl(int fd, int request);
+//int openat(int fd, char *path, int oflag);
+// 成功返回值依赖于cmd，出错返回-1
+//int fcntl(int fd, int cmd);
+
+
+
+
+
+
+
+
 
 
 #endif

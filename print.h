@@ -1,3 +1,6 @@
+#ifndef _KERNEL_PRINT_H
+#define _KERNEL_PRINT_H
+
 #define BACKSPACE 0x08
 #define LINEFEED 0x0a
 #define CARRIAGE_RETURN 0x0d
@@ -8,3 +11,7 @@
 void print(unsigned char * p);
 void printn(unsigned int number);
 void clear_screen();
+void put_char(unsigned char a);
+
+
+#endif

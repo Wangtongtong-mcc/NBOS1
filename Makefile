@@ -1,4 +1,4 @@
-CC = i686-elf-gcc -m32 -c -g -I. -nostdinc
+CC = i686-elf-gcc -m32 -c -g -I. -nostdinc -fno-builtin
 #AS = ~/software/nasm/bin/nasm -g
 AS=nasm -g
 #LD = ld -m elf_i386
@@ -8,7 +8,7 @@ OBJCOPY = i686-elf-objcopy
 
 
 ORIOBJS = \
-	entry.s\
+	entry.c\
 	main.c\
 	interrupt.c\
 	interrupt_handler.s\
@@ -21,10 +21,15 @@ ORIOBJS = \
 	syscall.c\
 	file.c\
 	str.c\
+	lock.c\
+	x86.c\
+	keyboard.c\
+	unistd.c\
 
 LINKOBJS = \
 	./target/entry.o\
 	./target/main.o\
+	./target/keyboard.o\
 	./target/interrupt.o\
 	./target/interrupt_handler.o\
 	./target/memory.o\
@@ -32,10 +37,13 @@ LINKOBJS = \
 	./target/syscall.o\
 	./target/file.o\
 	./target/process.o\
+	./target/x86.o\
+	./target/lock.o\
 	./target/diskload.o\
 	./target/switchktou.o\
 	./target/print.o\
 	./target/str.o\
+	./target/unistd.o\
 
 TARGET_DIR = ./target
 
@@ -51,7 +59,7 @@ $(TARGET_DIR)/loader.bin: loader.c read_sector.s
 	$(OBJCOPY) -S -O binary -j .text $(TARGET_DIR)/loader $(TARGET_DIR)/loader.bin
 
 $(TARGET_DIR)/kernel.bin: $(ORIOBJS)
-	$(AS) -f elf32 -o $(TARGET_DIR)/entry.o entry.s
+	$(CC) -o $(TARGET_DIR)/entry.o entry.c
 	$(AS) -f elf32 -o $(TARGET_DIR)/interrupt_handler.o interrupt_handler.s
 	$(AS) -f elf32 -o $(TARGET_DIR)/switchktou.o switchktou.s
 	$(CC) -o $(TARGET_DIR)/print.o print.c
@@ -64,7 +72,12 @@ $(TARGET_DIR)/kernel.bin: $(ORIOBJS)
 	$(CC) -o $(TARGET_DIR)/file.o file.c
 	$(CC) -o $(TARGET_DIR)/syscall.o syscall.c
 	$(CC) -o $(TARGET_DIR)/str.o str.c
+	$(CC) -o $(TARGET_DIR)/x86.o x86.c
+	$(CC) -o $(TARGET_DIR)/lock.o lock.c
+	$(CC) -o $(TARGET_DIR)/unistd.o unistd.c
+	$(CC) -o $(TARGET_DIR)/keyboard.o keyboard.c
 	$(LD) $(LINKOBJS) -Ttext 0xc0010000 -e entry -o $(TARGET_DIR)/kernel.bin
+	$(LD) $(LINKOBJS) -Ttext 0x00010000 -e entry -o $(TARGET_DIR)/kernel1000.bin
 
 $(TARGET_DIR)/shell.bin: shell.c unistd.c
 	$(CC) -o $(TARGET_DIR)/shell.o shell.c

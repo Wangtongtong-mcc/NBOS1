@@ -3,9 +3,9 @@
 global divide_error_handler,debug_handler,nmi_handler,breakpoint_handler,overflow_handler,bound_handler
 global invalid_opcode_handler,double_fault_handler,invalid_tss_handler,segment_not_present_handler
 global stack_segment_handler,general_protection_handler,page_fault_handler,syscall_handler,other_exception_handler
-global timer_handler
+global timer_handler,keyboard_handler
 
-extern interrupt_assign,print,page_np_handler
+extern interrupt_assign,print
 
 interrupt_entry:
 ; 保存上下文
@@ -33,10 +33,15 @@ interrupt_entry:
 ; 压入参数，调用中断分派函数
 	push ebp
 	call interrupt_assign
+
+;根据中断号，确认是否需要更新eax
+	cmp dword [ebp+12*4], 0x80
+	jne not80
 ;保存中断结果
 	mov [ebp+7*4], eax
 
 ; 恢复环境
+not80:
 	add esp, 4						; interrupt_assign的参数
 
 	popa
@@ -206,40 +211,7 @@ general_protection_handler:
 ; ------------------------------------------------------
 page_fault_handler:
 	push 14				    ; 中断向量号
-	push ds					; 保存环境
-	push es
-	push fs
-	push gs
-	pushad
-
-	mov ebp, esp
-
-	mov ax, 0x10						; 更换为内核数据段选择子
-	mov ds, ax
-	mov es, ax
-
-	mov eax, [ebp+14*4]					; 错误码
-	mov edx, cr2						; 引起页面异常的线性地址
-	push eax
-	push edx
-
-	test eax, 1							; 是否为缺页异常
-	jne other_pf
-	call page_np_handler
-	jmp return
-other_pf:
-	push 0								; 为保证page_np_handler函数和print函数的参数个数相同
-	push msg
-	call print
-return:
-	add esp, 8							; 跳过page_np_handler函数或print函数的参数
-	popad								; 恢复环境
-	pop gs
-	pop fs
-	pop es
-	pop ds
-	add esp, 8							; 跳过向量号和错误码
-	iret
+	jmp interrupt_entry
 
 
 ; timer_handler用于处理时钟中断
@@ -249,6 +221,15 @@ return:
 timer_handler:
 	push 0
 	push 0x20
+	jmp interrupt_entry
+
+; timer_handler用于处理时钟中断
+; Vector No.:0x20;
+; 发生中断后，处理器依次在栈中压入SS,ESP,EFLAGS,CS,EIP
+; ------------------------------------------------------
+keyboard_handler:
+	push 0
+	push 0x21
 	jmp interrupt_entry
 
 ; syscall_handler用于处理系统调用

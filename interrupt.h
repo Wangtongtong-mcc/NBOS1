@@ -20,6 +20,7 @@ void page_fault_handler(void);
 void syscall_handler(void);
 void other_exception_handler(void);
 void timer_handler(void);
+void keyboard_handler(void);
 // 中断分派函数
 void interrupt_assign(struct intr_context * ptr);
 // 中断初始化函数
@@ -28,7 +29,7 @@ struct gate_desc make_idt_desc (void(* function)(void),short attribute);
 // 8259A芯片初始化函数
 void init_pic(void);
 // 缺页处理函数
-void page_np_handler(unsigned int cr2, unsigned int errcode);
+void do_page_fault(struct intr_context * ptr);
 
 
 #endif

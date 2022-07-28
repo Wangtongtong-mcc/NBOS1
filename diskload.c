@@ -2,6 +2,9 @@
 #include "elf.h"
 #include "memory.h"
 #include "x86.h"
+#include "lock.h"
+
+extern struct lock disk_lock;
 
 /* load用于加载磁盘上的用户进程到内存中
  * */
@@ -52,6 +55,8 @@ void read_seg(unsigned char * target_location, unsigned int size, unsigned int s
  *      rwflag为读写标志
  * */
 void k_operatesector(unsigned char* target_location, unsigned int sector_number, int rwflag){
+	acquire(&disk_lock);
+
 	// 先选择通道（Primary），并向该通道sector count（0x1f2）寄存器写入待写扇区数
 	outb(IDE_SECTOR_COUNT_PORT,1);
 	// 向该通道的三个LBA寄存器写入起始扇区号的低24位
@@ -85,6 +90,8 @@ void k_operatesector(unsigned char* target_location, unsigned int sector_number,
 
 		target_location += 2;
 	}
+
+	release(&disk_lock);
 }
 
 

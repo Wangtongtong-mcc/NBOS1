@@ -4,10 +4,121 @@
 #define NULL ((void*)0)
 #define STACK_TOP 0xc0010000
 
+struct iret_param{
+	unsigned int eip;
+	unsigned short cs;
+	unsigned short padding2;
+	unsigned int eflags;
+	unsigned int esp;
+	unsigned short ss;
+	unsigned short padding1;
+};
+
+#define PAGE_PRIVILEGE_SUPERVISOR 0
+#define PAGE_PRIVILEGE_USER 1
+
+#define PAGE_PRESENT_FALSE 0
+#define PAGE_PRESENT_TRUE 1
+
+#define PAGE_TYPE_READ_ONLY 0
+#define PAGE_TYPE_READ_WRITE 1
+
+#define BUILD_PAGE_DIR_ITEM(addr, privilege, type, present) \
+	(struct page_dir_item_t){                                                       \
+		addr >> 12,  /* address */                          \
+		0,           /* ignore1 */                          \
+		0,           /* pat */                              \
+		0,           /* ignore2 */                          \
+		0,           /* accessed */                         \
+		0,           /* pcd */                              \
+		0,           /* pwt */                              \
+		privilege,   /* privilege */                        \
+		type,        /* type */                             \
+		present      /* present */                          \
+	}                                                       \
+
+#define PAGE_DIR_ITEM_SUPERVISOR(addr)  BUILD_PAGE_DIR_ITEM(addr, PAGE_PRIVILEGE_SUPERVISOR, PAGE_TYPE_READ_WRITE, PAGE_PRESENT_TRUE)
+#define PAGE_DIR_ITEM_USER(addr)  BUILD_PAGE_DIR_ITEM(addr, PAGE_PRIVILEGE_USER, PAGE_TYPE_READ_WRITE, PAGE_PRESENT_TRUE)
+
+
+
+//	struct page_dir_item_t page_dir_item;
+//	page_dir_item.address = ;
+//	page_dir_item.ignore1 = 0;
+//	page_dir_item.pat = 0;
+//	page_dir_item.ignore2 = 0;
+//	page_dir_item.accessed = 0;
+//	page_dir_item.pcd = 0;
+//	page_dir_item.pwt = 0;
+//	page_dir_item.privilege = 0;
+//	page_dir_item.type = 0;
+//	page_dir_item.present = 0;
+
+
+//struct page_dir_item_t {
+//	unsigned int address:20;
+//	unsigned int ignore1:4;
+//	unsigned int pat:1;
+//	unsigned int ignore2:1;
+//	unsigned int accessed:1;
+//	unsigned int pcd:1;
+//	unsigned int pwt:1;
+//	unsigned int privilege:1;
+//	unsigned int type:1;
+//	unsigned int present:1;
+//};
+
+struct page_dir_item_t {
+	unsigned int present:1;
+	unsigned int type:1;
+	unsigned int privilege:1;
+	unsigned int pwt:1;
+	unsigned int pcd:1;
+	unsigned int accessed:1;
+	unsigned int ignore2:1;
+	unsigned int pat:1;
+	unsigned int ignore1:4;
+	unsigned int address:20;
+};
+
+struct page_table_item_t {
+	unsigned int present:1;
+	unsigned int type:1;
+	unsigned int privilege:1;
+	unsigned int pwt:1;
+	unsigned int pcd:1;
+	unsigned int accessed:1;
+	unsigned int d:1;
+	unsigned int pat:1;
+	unsigned int g:1;
+	unsigned int ignore:3;
+	unsigned int address:20;
+};
+
+//typedef long page_dir_item_t;
+//typedef long page_table_item_t;
+
+struct page_table_t{
+	struct page_table_item_t page_table_items[1024];
+};
+struct page_dir_t{
+//	page_dir_item_t page_dir_items[1024];
+	struct page_dir_item_t page_dir_items[1024];
+};
+
+struct page_t{
+	char content[4096];
+};
+
+
+#define USER_STACK_START 0xbffffffc
+
+
+
 // 进程
 #define PCB_MAX 20                                              // 最大进程量
 #define PID_MAX 60                                              // pid最大值，超过这个值后
-enum run_state{FREE,BORN,RUNNABLE,RUNNING,ABORT};               // 进程状态
+enum run_state{FREE,BORN,RUNNABLE,RUNNING,ZOMBIE,ABORT};               // 进程状态
 struct context{                                                 // 存储进程上下文
 	unsigned int edi;
 	unsigned int esi;
@@ -92,7 +203,7 @@ struct task_struct{                                             // 任务状态�
 // 文件系统
 #define FILE_MAX_InPROCESS 20                                        // 进程打开文件的最大量
 #define FILE_MAX_INSYS 100                                           // 系统同一时间打开的最大文件量
-#define MAX_BLOCKS_InFILE 15                                          // 一个文件最多占用的block
+#define MAX_BLOCKS_InFILE 20                                          // 一个文件最多占用的block
 #define FILE_NAME_MAX 20                                             // 文件名称最大字节数
 
 #define STDIN_FILENO 0                                           // 标注io_fd
@@ -249,7 +360,7 @@ typedef int(*sn_ptr)(struct intr_context *ptr);
 #define PAGE_U 4
 #define PAGE_STRUCT_ENTRIES 1024        // 一个页面包含的条目数量
 
-#define PHY_SIZE 0x20000000             // 物理内存大小
+#define PHY_SIZE 0x2000000             // 物理内存大小
 #define VIR_SIZE 0xffffffff             // 虚拟内存大小
 #define KMEM 0                          // 内存类型，是内核空间还是用户空间
 #define UMEM 1
@@ -260,7 +371,7 @@ typedef int(*sn_ptr)(struct intr_context *ptr);
 #define BUFFER_START 0xc0000000                                     // 内核加载到0x10000以上，内核栈为0x10000以下（一个页），0x0000以上作为缓冲区来用
 #define DEVICE_START 0x1e000000                                     // 设备起始虚拟地址
 
-#define ALIGN(x) (unsigned char *)(((unsigned int)x & 0xfffff000) + PAGESIZE)        // 以页为单位向上对齐
+#define ALIGN_UP(x) (((unsigned int)x + 0xfff) & 0xfffff000)        // 以页为单位向上对齐
 #define VIR_2_PHY(x) ((x)-KERNEL_VIR_BASE)                                           // 虚拟地址转物理地址
 #define PHY_2_VIR(x) ((x)+KERNEL_VIR_BASE)
 
@@ -293,6 +404,12 @@ struct global_descriptor{
 	unsigned char base_high;
 };
 
+struct gdtr_structure {                                 // gdtr结构体，用于加载gdtr，前两字节为gdt大小， 后四字节为gdt的地址
+	unsigned short gdt_size;
+	unsigned short gdt_addr_low;
+	unsigned short gdt_addr_high;
+};
+
 
 
 
@@ -309,7 +426,7 @@ struct pcb{                 // 存储进程信息，即进程控制块
 	unsigned int father_pid;// 父进程id
 
 	enum run_state pstate;  // 进程状态
-	unsigned int * pagedir; // 进程页目录(虚拟地址)
+	unsigned char * pagedir; // 进程页目录(虚拟地址)
 	unsigned int next_vir_addr; // 该进程下一个可分配的虚拟地址
 	struct fd fdlist[FILE_MAX_InPROCESS];
 };
@@ -320,6 +437,9 @@ struct cpu{                                         // cpu当前运行情况
 };
 
 
+struct lock {
+	int value;  //value=0时，空闲；value=1时，被占用
+};
 
 
 
